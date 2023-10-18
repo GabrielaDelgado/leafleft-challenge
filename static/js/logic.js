@@ -1,24 +1,15 @@
-var Url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_week.geojson";
+var map = L.map('map').setView([-10, -40], 3);
 
-d3.json(Url).then(function(data) {
-  createFeatures(data.features);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+
+var Url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/1.0_week.geojson";
+
+d3.json(Url).then(function (data) {
+    console.log(data.features[100]);
+    createFeatures(data);
 });
-
-function markerColor(magnitude) {
-    if (magnitude <= 1) {
-        return "FFA07A"
-    } else if (magnitude <= 2) {
-        return "FA8072"
-    } else if (magnitude <= 3) {
-        return "CD5C5C"
-    } else if (magnitude <= 4) {
-        return "DC143C"
-    } else if (magnitude <= 5) {
-        return "B22222"
-    } else {
-        return "8B0000"
-    }
-};
 
 function createFeatures(earthquake) {
     function onEachFeature(feature, layer) {
@@ -26,38 +17,39 @@ function createFeatures(earthquake) {
     }
 
     let earthquakes = L.geoJSON(earthquake, {
-        pointToLayer: function(feature, latlng) {
-            return L.circlemarker(latlng, {
-                radius: markerSIze(feature.properties.mag),
-                fillColor: markerColor(feature.properties.ag),
+        pointToLayer: function (feature, latlng) {
+            let depth = feature.geometry.coordinates[2];
+
+            return L.circleMarker(latlng, {
+                radius: feature.properties.mag * 4,
+                weight: 1,
+                color: 'black',
+                fillOpacity: .75,
+                fillColor:
+                    depth < 10 ? 'green' :
+                        depth < 30 ? 'lime' :
+                            depth < 50 ? 'yellow' :
+                                depth < 70 ? 'orange' :
+                                    depth < 90 ? 'darkorange' : 'red'
             });
         },
         onEachFeature: onEachFeature
-    });
+    }).addTo(map);
+};
 
-    createImageBitmap(earthquakes);
-}
+let Legend = L.control({ position: 'bottomright' });
 
-function createMap(earthquakes) {
-
-    let map = L.tileLayer("https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
-        attribution: "© <a href='https://www.mapbox.com/about/maps/'>Mapbox</a> © <a href='http://www.openstreetmap.org/copyright'>OpenStreetMap</a> <strong><a href='https://www.mapbox.com/map-feedback/' target='_blank'>Improve this map</a></strong>",
-        id: "mapbox/streets-v11",
-        accessToken: API_KEY
-    });
-
-
-
-    let overlayMaps = {
-        Earthquakes: earthquakes
-    };
-
-    let mapchart = L.map("map", {
-        layers: [map, earthquakes]
-    });
-
-    dispatchEvent.innerHTML += "<ul>" + labels.join("") + "</ul>";
+Legend.onAdd = function () {
+    let div = L.DomUtil.create("div", "legend");
+    div.innerHTML = `
+        <div style="background:green;color:white;padding:2px"> -10 - 10</div>
+        <div style="background:lime;color:white;padding:2px"> -10 - 30</div>
+        <div style="background:yellow;color:white;padding:2px"> -30 - 50</div>
+        <div style="background:orange;color:white;padding:2px"> -50 - 70</div>
+        <div style="background:darkorange;color:white;padding:2px"> -70 - 90</div>
+        <div style="background:red;color:white;padding:2px"> -90 +</div>
+    `;
     return div;
+};
 
-    
-}
+Legend.addTo(map);
